@@ -1,0 +1,7 @@
+{
+  "name": "NoteGenie saas study asst",
+  "description": "A production-grade AI-powered study platform that transforms complex documents and math-heavy notes into summaries, flashcards, and quizzes using Gemini 3.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
