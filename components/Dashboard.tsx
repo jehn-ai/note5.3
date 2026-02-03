@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StudyMaterial } from '../types';
 import { Plus, History, BookOpen, Clock, ChevronRight, UserCircle, ShieldAlert, Layers, HardDrive, Cloud } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+
 
 interface DashboardProps {
   history: StudyMaterial[];
