@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Copy, Check, Info, HelpCircle, GraduationCap, Chev
 import { GeminiService } from '../services/gemini';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from "jspdf";
+import ProveItModal from './ProveItModal';
 
 interface ResultViewProps {
   material: StudyMaterial;
@@ -24,6 +25,10 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [localMaterial, setLocalMaterial] = useState<StudyMaterial>(material);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Prove It modal state
+  const [proveItOpen, setProveItOpen] = useState(false);
+  const [reviewedCards, setReviewedCards] = useState<{ id: string; front: string; back: string }[]>([]);
 
   useEffect(() => {
     setLocalMaterial(material);
@@ -36,11 +41,23 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
   };
 
   const handleFlashcardConfidence = (type: 'got-it' | 'review') => {
-    // Visual feedback logic could go here
-    // Move to next card
+    // Track reviewed cards for Prove It
+    const currentCard = localMaterial.flashcards[flashcardIndex];
+    if (currentCard && !reviewedCards.find(c => c.front === currentCard.question)) {
+      setReviewedCards(prev => [...prev, {
+        id: `card-${flashcardIndex}`,
+        front: currentCard.question,
+        back: currentCard.answer
+      }]);
+    }
+    
+    // Move to next card or trigger Prove It at the end
     if (flashcardIndex < localMaterial.flashcards.length - 1) {
       setIsFlipped(false);
       setTimeout(() => setFlashcardIndex(i => i + 1), 150);
+    } else {
+      // End of deck - trigger Prove It modal
+      setProveItOpen(true);
     }
   };
 
@@ -216,7 +233,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
       });
 
       // Footer
-      const pageCount = doc.internal.getNumberOfPages();
+      const pageCount = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
@@ -493,6 +510,43 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
           </div>
         )}
       </div>
+
+      {/* Prove It Modal */}
+      <ProveItModal
+        isOpen={proveItOpen}
+        onClose={() => setProveItOpen(false)}
+        reviewedCards={(() => {
+          // Ensure minimum 10 cards for quality question generation
+          const tracked = reviewedCards.length > 0 ? reviewedCards : localMaterial.flashcards.map((c, idx) => ({
+            id: `card-${idx}`,
+            front: c.question,
+            back: c.answer
+          }));
+          
+          // If less than 10, top up with remaining cards from deck
+          if (tracked.length < 10) {
+            const needed = 10 - tracked.length;
+            const additional = localMaterial.flashcards
+              .slice(0, needed)
+              .map((c, idx) => ({
+                id: `extra-card-${idx}`,
+                front: c.question,
+                back: c.answer
+              }))
+              .filter(c => !tracked.find(t => t.front === c.front));
+            return [...tracked, ...additional];
+          }
+          
+          return tracked;
+        })()}
+        onStartQuiz={() => {
+          setProveItOpen(false);
+          setActiveTab('quiz');
+          if (localMaterial.quiz.length === 0) {
+            generateQuizOnDemand();
+          }
+        }}
+      />
 
       <style>{`
         .perspective-1000 { perspective: 1000px; }

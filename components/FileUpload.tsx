@@ -277,9 +277,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => setStorageMode('local')}
-            className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-smooth active-press ${
               storageMode === 'local'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 hover-glow'
                 : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
             }`}
           >
@@ -287,9 +287,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
           </button>
           <button
             onClick={() => setStorageMode('cloud')}
-            className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-smooth active-press ${
               storageMode === 'cloud'
-                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-300'
+                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-300 hover-glow'
                 : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
             }`}
           >
@@ -300,7 +300,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
 
       {/* Upload Box */}
       <div
-        className={`border-2 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer ${
+        className={`border-2 border-dashed rounded-3xl p-12 text-center transition-smooth cursor-pointer hover-lift ${
           file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 hover:border-cyan-500/50 bg-slate-900/50'
         } ${isWorking ? 'opacity-50 pointer-events-none' : ''}`}
         onClick={() => !file && !isWorking && fileInputRef.current?.click()}
@@ -365,9 +365,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
               <button
                 key={m.id}
                 onClick={() => setStudyGoal(m.id)}
-                className={`p-4 rounded-2xl border text-left transition-all ${
+                className={`p-4 rounded-2xl border text-left transition-smooth active-press hover-lift ${
                   studyGoal === m.id
-                    ? 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500'
+                    ? 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500 hover-glow'
                     : 'border-slate-800 bg-slate-900 hover:border-slate-700'
                 }`}
               >
@@ -412,17 +412,17 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
         <button
           onClick={handleCancel}
           disabled={isWorking && statusText === 'Stopping...'}
-          className="flex-1 py-4 px-6 border border-slate-800 text-slate-400 font-bold rounded-2xl hover:bg-slate-900 transition-colors disabled:opacity-50"
+          className="flex-1 py-4 px-6 border border-slate-800 text-slate-400 font-bold rounded-2xl hover:bg-slate-900 transition-smooth active-press disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           disabled={!file || isWorking}
           onClick={handleStart}
-          className={`flex-1 py-4 px-6 font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-4 px-6 font-bold rounded-2xl shadow-lg transition-smooth active-press flex items-center justify-center gap-2 ${
             !file || isWorking
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-              : 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white hover:shadow-cyan-500/20 active:scale-95'
+              : 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white hover:shadow-cyan-500/20 hover:shadow-2xl hover-glow'
           }`}
         >
           <Zap size={18} />

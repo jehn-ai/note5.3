@@ -122,7 +122,7 @@ const App: React.FC = () => {
               className="flex items-center gap-2 cursor-pointer group"
               onClick={() => setCurrentStep(AppStep.DASHBOARD)}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition-smooth active-press">
                 <BookOpen className="text-white w-5 h-5" />
               </div>
               <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
@@ -133,14 +133,14 @@ const App: React.FC = () => {
             <nav className="flex items-center gap-4">
               <button 
                 onClick={() => setCurrentStep(AppStep.DASHBOARD)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${currentStep === AppStep.DASHBOARD ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-smooth active-press ${currentStep === AppStep.DASHBOARD ? 'bg-cyan-500/10 text-cyan-400 hover-glow' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'}`}
               >
                 <LayoutDashboard size={18} />
                 <span className="hidden sm:inline">Dashboard</span>
               </button>
               <button 
                 onClick={() => setCurrentStep(AppStep.SYSTEM_DESIGN)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors ${currentStep === AppStep.SYSTEM_DESIGN ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400 hover:text-slate-100'}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-smooth active-press ${currentStep === AppStep.SYSTEM_DESIGN ? 'bg-emerald-500/10 text-emerald-400 hover-glow' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'}`}
               >
                 <Code size={18} />
                 <span className="hidden sm:inline text-xs font-bold tracking-widest uppercase">Arch</span>
@@ -148,7 +148,7 @@ const App: React.FC = () => {
               <div className="h-6 w-[1px] bg-slate-800 mx-2" />
               <button 
                 onClick={handleLogout}
-                className="text-slate-400 hover:text-red-400 transition-colors p-2"
+                className="text-slate-400 hover:text-red-400 transition-smooth active-press p-2 rounded-lg hover:bg-red-500/10"
                 title="Sign Out"
               >
                 <LogOut size={18} />

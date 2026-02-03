@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { SummaryMode, Flashcard, QuizQuestion } from "../types";
+import { SummaryMode, Flashcard, QuizQuestion, ProveItQuestion, ProveItGrade } from "../types";
 // @ts-ignore
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -277,4 +277,205 @@ ${summaryText}
       return [];
     }
   }
+
+  // Retry helper for handling transient errors
+  private static async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        lastError = error;
+        
+        // Check if error is retryable (503, 429, or network errors)
+        const isRetryable = 
+          error?.message?.includes('503') ||
+          error?.message?.includes('429') ||
+          error?.message?.includes('RESOURCE_EXHAUSTED') ||
+          error?.message?.includes('UNAVAILABLE') ||
+          error?.message?.includes('overloaded');
+        
+        if (!isRetryable || attempt === maxRetries - 1) {
+          throw error;
+        }
+        
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`[Retry ${attempt + 1}/${maxRetries}] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    throw lastError;
+  }
+
+  // Prove It Feature Methods
+  static async generateProveItQuestions(cards: { id: string; front: string; back: string }[]): Promise<ProveItQuestion[]> {
+    const model = "gemini-3-flash-preview";
+    const prompt = buildProveItPrompt(3);
+
+    const payload = {
+      flashcards: cards.map(c => ({ id: c.id, front: c.front, back: c.back }))
+    };
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model,
+        contents: [{ text: prompt + "\n\nFLASHCARDS_JSON:\n" + JSON.stringify(payload) }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                type: { type: Type.STRING },
+                question: { type: Type.STRING },
+                answerKey: { type: Type.STRING },
+                sourceCardIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["id", "type", "question", "answerKey", "sourceCardIds"]
+            }
+          }
+        }
+      });
+
+      const raw = response.text || "[]";
+      const parsed = JSON.parse(raw);
+
+      // Basic cleanup
+      return Array.isArray(parsed)
+        ? parsed
+            .map((q: any): ProveItQuestion => ({
+              id: String(q.id || "").trim(),
+              type: q.type === "scenario" ? "scenario" : "short",
+              question: String(q.question || "").trim(),
+              answerKey: String(q.answerKey || "").trim(),
+              sourceCardIds: Array.isArray(q.sourceCardIds) ? q.sourceCardIds.map(String) : []
+            }))
+            .filter(q => q.id && q.question && q.answerKey && q.sourceCardIds.length)
+            .slice(0, 3)
+        : [];
+    } catch (error) {
+      console.error("Prove It question generation error:", error);
+      return [];
+    }
+  }
+
+  static async gradeProveIt(questions: ProveItQuestion[], studentAnswers: Record<string, string>): Promise<ProveItGrade> {
+    const model = "gemini-3-flash-preview";
+    const prompt = GRADE_PROVEIT_PROMPT;
+
+    const payload = { questions, studentAnswers };
+
+    try {
+      return await this.retryWithBackoff(async () => {
+        const response = await this.ai.models.generateContent({
+          model,
+          contents: [{ text: prompt + "\n\nPAYLOAD_JSON:\n" + JSON.stringify(payload) }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                totalScore: { type: Type.NUMBER },
+                maxScore: { type: Type.NUMBER },
+                results: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING },
+                      correct: { type: Type.BOOLEAN },
+                      score: { type: Type.NUMBER },
+                      feedback: { type: Type.STRING },
+                      firstMissingIdea: { type: Type.STRING },
+                      followUpQuestion: { type: Type.STRING }
+                    },
+                    required: ["id", "correct", "score", "feedback", "firstMissingIdea"]
+                  }
+                }
+              },
+              required: ["totalScore", "maxScore", "results"]
+            }
+          }
+        });
+
+        const raw = response.text || "{}";
+        const parsed = JSON.parse(raw);
+
+        return {
+          totalScore: Number(parsed.totalScore ?? 0),
+          maxScore: Number(parsed.maxScore ?? questions.length),
+          results: Array.isArray(parsed.results) ? parsed.results : []
+        };
+      });
+    } catch (error) {
+      console.error("Prove It grading error:", error);
+      throw error; // Re-throw to let UI handle it
+    }
+  }
 }
+
+// Helper functions for Prove It
+function buildProveItPrompt(target: number): string {
+  return `
+You are a strict study coach.
+
+Create a "Prove It" mini review of EXACTLY ${target} questions from the provided flashcards.
+
+Rules:
+- Use ONLY the flashcards provided as the knowledge source.
+- Q1 and Q2 must be short-answer (1–2 sentences expected).
+- Q3 must be a scenario/application question.
+- Provide an answerKey for each question using only the flashcard backs.
+- Each question must include sourceCardIds referencing the flashcards used.
+- Output ONLY valid JSON (no markdown, no commentary).
+
+JSON schema:
+[
+  {
+    "id": "q1",
+    "type": "short",
+    "question": "string",
+    "answerKey": "string",
+    "sourceCardIds": ["string"]
+  }
+]
+`.trim();
+}
+
+const GRADE_PROVEIT_PROMPT = `
+You are an examiner. Grade the student's answers using ONLY the answer keys provided.
+
+Rules:
+- Be strict but fair.
+- Accept paraphrases if meaning is preserved.
+- For each question return: correct (boolean), score (0..1), feedback (1–2 sentences),
+  firstMissingIdea (short phrase).
+- If incorrect, generate exactly ONE followUpQuestion targeting firstMissingIdea.
+- If correct, followUpQuestion must be null.
+- Output ONLY valid JSON.
+
+JSON schema:
+{
+  "totalScore": number,
+  "maxScore": number,
+  "results": [
+    {
+      "id": "q1",
+      "correct": boolean,
+      "score": number,
+      "feedback": string,
+      "firstMissingIdea": string,
+      "followUpQuestion": string | null
+    }
+  ]
+}
+`.trim();
