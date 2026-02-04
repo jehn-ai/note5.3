@@ -1,17 +1,47 @@
-
 import React, { useState } from 'react';
 import { LogIn, Sparkles, Mail, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { AppTheme } from '../types';
 
 interface AuthProps {
   onLogin: (email: string) => void;
+  theme?: AppTheme;
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+const Auth: React.FC<AuthProps> = ({ onLogin, theme = 'default' }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null);
+  
+  const isGenie = theme === 'genie';
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    
+    // Set our custom persistence flag
+    if (rememberMe) {
+      localStorage.setItem('notegenie_remember_me', 'true');
+    } else {
+      localStorage.removeItem('notegenie_remember_me');
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message });
+      setLoading(false);
+    }
+  };
 
   const handleAnonymousSignIn = () => {
+    // For now, we'll keep the guest simulation for instant "Try it out" access without polluting the Supabase user base
+    // In a real SaaS, you might use supabase.auth.signInAnonymously()
     setLoading(true);
     const guestEmail = `guest_${Math.random().toString(36).substring(7)}@notegenie.internal`;
     localStorage.setItem('notegenie_user_email', guestEmail);
@@ -23,34 +53,60 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     }, 800);
   };
 
-  const handleEmailSignIn = (e: React.FormEvent) => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setLoading(true);
     setMessage(null);
 
-    // Immediate session generation
-    localStorage.setItem('notegenie_user_email', email);
+    // Set our custom persistence flag
+    if (rememberMe) {
+      localStorage.setItem('notegenie_remember_me', 'true');
+    } else {
+      localStorage.removeItem('notegenie_remember_me');
+    }
 
-    // Simulate authentication processing
-    setTimeout(() => {
-      onLogin(email);
-      setLoading(false);
-    }, 1000);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message });
+    } else {
+      setMessage({ 
+        type: 'success', 
+        text: 'Check your email for the magic link!' 
+      });
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl relative overflow-hidden">
+    <div className={`max-w-md mx-auto mt-0 p-8 border rounded-3xl shadow-2xl relative overflow-hidden transition-all duration-500 ${
+      isGenie 
+        ? 'bg-[#1e1035]/80 border-purple-500/30 shadow-purple-900/40' 
+        : 'bg-slate-900/90 border-slate-800 shadow-cyan-900/20'
+    }`}>
       <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Sparkles className="w-32 h-32 text-cyan-400" />
+        <Sparkles className={`w-32 h-32 ${isGenie ? 'text-purple-400' : 'text-cyan-400'}`} />
       </div>
       
       <div className="relative z-10 text-center mb-8">
-        <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/20">
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transition-colors ${
+          isGenie 
+            ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-purple-500/20' 
+            : 'bg-gradient-to-br from-cyan-500 to-emerald-500 shadow-cyan-500/20'
+        }`}>
           <Sparkles className="text-white w-8 h-8" />
         </div>
-        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+        <h1 className={`text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r ${
+          isGenie ? 'from-purple-400 to-pink-400' : 'from-cyan-400 to-emerald-400'
+        }`}>
           Scholar Access
         </h1>
         <p className="text-slate-400">Unlock your Genie Study Buddy 😇</p>
@@ -60,6 +116,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         <button 
           type="button"
           disabled={loading}
+          onClick={handleGoogleSignIn}
           className="w-full bg-white text-slate-900 font-bold py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95 hover:bg-slate-100 disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -85,7 +142,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-slate-100 placeholder:text-slate-600"
+              className={`w-full bg-slate-950 border rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:ring-2 transition-all text-slate-100 placeholder:text-slate-600 ${
+                isGenie 
+                  ? 'border-purple-500/20 focus:ring-purple-500/50' 
+                  : 'border-slate-800 focus:ring-cyan-500/50'
+              }`}
               placeholder="user@university.edu"
             />
           </div>
@@ -93,7 +154,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           {message && (
             <div className={`p-4 rounded-xl text-xs flex items-start gap-3 border animate-in fade-in slide-in-from-top-2 ${
               message.type === 'success' 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                ? (isGenie ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')
                 : 'bg-red-500/10 text-red-400 border-red-500/20'
             }`}>
               {message.type === 'success' ? <CheckCircle2 className="shrink-0 mt-0.5" size={16} /> : <AlertCircle className="shrink-0 mt-0.5" size={16} />}
@@ -102,10 +163,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           )}
 
           <div className="space-y-3">
+            <label className="flex items-center gap-3 px-1 cursor-pointer group">
+              <div className="relative flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className={`peer h-4 w-4 appearance-none rounded border border-slate-600 bg-slate-800 transition-all focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                    isGenie 
+                      ? 'checked:bg-purple-500 checked:border-purple-500 focus:ring-purple-500/50' 
+                      : 'checked:bg-cyan-500 checked:border-cyan-500 focus:ring-cyan-500/50'
+                  }`} 
+                />
+                <svg className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" viewBox="0 0 17 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                   <path d="M1 5.917L5.724 10.5L16 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span className="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                Remember my session
+              </span>
+            </label>
+
             <button 
               type="submit"
               disabled={loading || !email}
-              className="group w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-cyan-900/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+              className={`group w-full text-white font-bold py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 ${
+                isGenie 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-900/20' 
+                  : 'bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 shadow-cyan-900/20'
+              }`}
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -121,11 +207,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 type="button"
                 onClick={handleAnonymousSignIn}
                 disabled={loading}
-                className="w-full py-2.5 flex items-center justify-center gap-2 text-[10px] font-extrabold text-slate-500 hover:text-emerald-400 uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 disabled:opacity-30 group"
+                className={`w-full py-2.5 flex items-center justify-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 disabled:opacity-30 group ${
+                  isGenie ? 'text-slate-500 hover:text-pink-400' : 'text-slate-500 hover:text-emerald-400'
+                }`}
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-emerald-500 transition-colors" />
+                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isGenie ? 'bg-slate-700 group-hover:bg-pink-500' : 'bg-slate-700 group-hover:bg-emerald-500'}`} />
                 Try as Guest
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-emerald-500 transition-colors" />
+                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isGenie ? 'bg-slate-700 group-hover:bg-pink-500' : 'bg-slate-700 group-hover:bg-emerald-500'}`} />
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { X, FileText, Image as ImageIcon, Loader2, Zap, Layers, ShieldAlert, Cloud, HardDrive } from 'lucide-react';
-import { StudyMaterial } from '../types';
+import { StudyMaterial, AppTheme } from '../types';
 import { GeminiService } from '../services/gemini';
 import { supabase } from '../lib/supabase';
 
@@ -10,6 +10,7 @@ type StorageMode = 'local' | 'cloud';
 
 interface FileUploadProps {
   userEmail: string;
+  theme: AppTheme;
   onProcessingStart: () => void;
   onComplete: (data: StudyMaterial) => void;
   onUpdate?: (data: Partial<StudyMaterial>) => void;
@@ -56,7 +57,7 @@ function safeIdFromEmail(email: string) {
 // REDUCED TO 10MB to prevent XHR/Browser crashes with inline base64
 const MAX_FILE_MB = 10;
 
-const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, onComplete, onUpdate, onCancel }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ userEmail, theme, onProcessingStart, onComplete, onUpdate, onCancel }) => {
   const [file, setFile] = useState<File | null>(null);
   const [studyGoal, setStudyGoal] = useState<StudyGoal>('standard');
   const [storageMode, setStorageMode] = useState<StorageMode>('local');
@@ -279,7 +280,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
             onClick={() => setStorageMode('local')}
             className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-smooth active-press ${
               storageMode === 'local'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 hover-glow'
+                ? (theme === 'genie' ? 'border-pink-500 bg-pink-500/10 text-pink-300 hover-glow' : 'border-emerald-500 bg-emerald-500/10 text-emerald-300 hover-glow')
                 : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
             }`}
           >
@@ -289,7 +290,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
             onClick={() => setStorageMode('cloud')}
             className={`px-4 py-2 rounded-2xl border text-sm font-bold flex items-center gap-2 transition-smooth active-press ${
               storageMode === 'cloud'
-                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-300 hover-glow'
+                ? (theme === 'genie' ? 'border-purple-500 bg-purple-500/10 text-purple-300 hover-glow' : 'border-cyan-500 bg-cyan-500/10 text-cyan-300 hover-glow')
                 : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
             }`}
           >
@@ -301,7 +302,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
       {/* Upload Box */}
       <div
         className={`border-2 border-dashed rounded-3xl p-12 text-center transition-smooth cursor-pointer hover-lift ${
-          file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 hover:border-cyan-500/50 bg-slate-900/50'
+          file 
+            ? (theme === 'genie' ? 'border-pink-500/50 bg-pink-500/5' : 'border-emerald-500/50 bg-emerald-500/5')
+            : (`border-slate-800 bg-slate-900/50 ${theme === 'genie' ? 'hover:border-purple-500/50' : 'hover:border-cyan-500/50'}`)
         } ${isWorking ? 'opacity-50 pointer-events-none' : ''}`}
         onClick={() => !file && !isWorking && fileInputRef.current?.click()}
       >
@@ -316,7 +319,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
         {file ? (
           <div className="space-y-4">
             <div className="flex justify-center">
-              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${theme === 'genie' ? 'bg-pink-500/20 text-pink-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                 {file.type.includes('image') ? <ImageIcon size={32} /> : <FileText size={32} />}
               </div>
             </div>
@@ -367,11 +370,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
                 onClick={() => setStudyGoal(m.id)}
                 className={`p-4 rounded-2xl border text-left transition-smooth active-press hover-lift ${
                   studyGoal === m.id
-                    ? 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500 hover-glow'
+                    ? (theme === 'genie' ? 'border-purple-500 bg-purple-500/10 ring-1 ring-purple-500 hover-glow' : 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500 hover-glow')
                     : 'border-slate-800 bg-slate-900 hover:border-slate-700'
                 }`}
               >
-                <div className={`font-bold mb-1 ${studyGoal === m.id ? 'text-cyan-400' : 'text-white'}`}>
+                <div className={`font-bold mb-1 ${studyGoal === m.id ? (theme === 'genie' ? 'text-purple-400' : 'text-cyan-400') : 'text-white'}`}>
                   {m.label}
                 </div>
                 <div className="text-[10px] text-slate-500 leading-tight uppercase font-black tracking-widest">
@@ -396,7 +399,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
 
       {/* Working */}
       {isWorking && (
-        <div className="flex flex-col items-center gap-4 text-cyan-400 font-medium animate-pulse">
+        <div className={`flex flex-col items-center gap-4 font-medium animate-pulse ${theme === 'genie' ? 'text-purple-400' : 'text-cyan-400'}`}>
           <div className="flex items-center gap-2">
             <Loader2 className="animate-spin" size={20} />
             {statusText || 'Working...'}
@@ -422,7 +425,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ userEmail, onProcessingStart, o
           className={`flex-1 py-4 px-6 font-bold rounded-2xl shadow-lg transition-smooth active-press flex items-center justify-center gap-2 ${
             !file || isWorking
               ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-              : 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white hover:shadow-cyan-500/20 hover:shadow-2xl hover-glow'
+              : (theme === 'genie' 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-purple-500/20 hover:shadow-2xl hover-glow' 
+                  : 'bg-gradient-to-r from-cyan-600 to-emerald-600 text-white hover:shadow-cyan-500/20 hover:shadow-2xl hover-glow')
           }`}
         >
           <Zap size={18} />

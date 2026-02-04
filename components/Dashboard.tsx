@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StudyMaterial } from '../types';
+import { AppTheme, StudyMaterial } from '../types';
 import { Plus, History, BookOpen, Clock, ChevronRight, UserCircle, ShieldAlert, Layers, HardDrive, Cloud } from 'lucide-react';
 
 
 interface DashboardProps {
   history: StudyMaterial[];
+  theme: AppTheme;
   onUploadClick: () => void;
   onViewMaterial: (m: StudyMaterial) => void;
 }
@@ -41,7 +42,7 @@ async function idbGetAll(storeName: 'materials') {
   }
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadClick, onViewMaterial }) => {
+const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, theme, onUploadClick, onViewMaterial }) => {
   const [isGuest, setIsGuest] = useState(false);
   const [localMaterials, setLocalMaterials] = useState<StudyMaterial[]>([]);
 
@@ -85,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
         </div>
         <button 
           onClick={onUploadClick}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-bold shadow-lg shadow-cyan-900/30 transition-all active:scale-95 group"
+          className={`${theme === 'genie' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-900/30' : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/30'} text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-bold shadow-lg transition-all active:scale-95 group`}
         >
           <Plus size={24} className="group-hover:rotate-90 transition-transform" />
           Create New Deck
@@ -107,8 +108,8 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 hover:border-cyan-500/30 transition-colors shadow-sm">
-          <div className="w-14 h-14 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400">
+        <div className={`bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 transition-colors shadow-sm ${theme === 'genie' ? 'hover:border-purple-500/30' : 'hover:border-cyan-500/30'}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme === 'genie' ? 'bg-purple-500/10 text-purple-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
             <Layers size={28} />
           </div>
           <div>
@@ -116,8 +117,8 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Decks</div>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 hover:border-emerald-500/30 transition-colors shadow-sm">
-          <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+        <div className={`bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 transition-colors shadow-sm ${theme === 'genie' ? 'hover:border-pink-500/30' : 'hover:border-emerald-500/30'}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme === 'genie' ? 'bg-pink-500/10 text-pink-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
             <History size={28} />
           </div>
           <div>
@@ -125,8 +126,8 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cards Mastered</div>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 hover:border-purple-500/30 transition-colors shadow-sm">
-          <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400">
+        <div className={`bg-slate-900 border border-slate-800 p-6 rounded-[2rem] flex items-center gap-4 transition-colors shadow-sm ${theme === 'genie' ? 'hover:border-indigo-500/30' : 'hover:border-purple-500/30'}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme === 'genie' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-purple-500/10 text-purple-400'}`}>
             <Clock size={28} />
           </div>
           <div>
@@ -138,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
 
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-white flex items-center gap-2 pl-2">
-          <History size={20} className="text-cyan-400" />
+          <History size={20} className={theme === 'genie' ? "text-purple-400" : "text-cyan-400"} />
           Continue Studying
         </h3>
         {mergedHistory.length === 0 ? (
@@ -162,19 +163,29 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
                 <div 
                   key={m.id}
                   onClick={() => onViewMaterial(m)}
-                  className="group bg-slate-900/40 border border-slate-800/60 hover:border-cyan-500/50 p-5 rounded-3xl flex items-center justify-between cursor-pointer transition-all hover:bg-slate-900 shadow-sm"
+                  className={`group bg-slate-900/40 border border-slate-800/60 p-5 rounded-3xl flex items-center justify-between cursor-pointer transition-all hover:bg-slate-900 shadow-sm ${
+                    theme === 'genie' ? 'hover:border-purple-500/50' : 'hover:border-cyan-500/50'
+                  }`}
                 >
                   <div className="flex items-center gap-5">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-inner ${
-                      isActuallyLocal ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800/80 text-slate-500 group-hover:bg-cyan-500 group-hover:text-white'
+                      isActuallyLocal 
+                        ? (theme === 'genie' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400')
+                        : (theme === 'genie' 
+                            ? 'bg-slate-800/80 text-slate-500 group-hover:bg-purple-500 group-hover:text-white' 
+                            : 'bg-slate-800/80 text-slate-500 group-hover:bg-cyan-500 group-hover:text-white')
                     }`}>
                       {isActuallyLocal ? <HardDrive size={24} /> : <BookOpen size={24} />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-200 group-hover:text-cyan-400 transition-colors tracking-tight">{m.title}</h4>
+                        <h4 className={`font-bold text-slate-200 transition-colors tracking-tight ${theme === 'genie' ? 'group-hover:text-purple-400' : 'group-hover:text-cyan-400'}`}>{m.title}</h4>
                         {isActuallyLocal && (
-                          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                          <span className={`text-[10px] border px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                            theme === 'genie' 
+                              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          }`}>
                             Device
                           </span>
                         )}
@@ -184,8 +195,8 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, onUploadCl
                       </p>
                     </div>
                   </div>
-                  <div className="bg-slate-800/50 p-2 rounded-xl group-hover:bg-cyan-500/10 transition-colors">
-                    <ChevronRight size={20} className="text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
+                  <div className={`bg-slate-800/50 p-2 rounded-xl transition-colors ${theme === 'genie' ? 'group-hover:bg-purple-500/10' : 'group-hover:bg-cyan-500/10'}`}>
+                    <ChevronRight size={20} className={`text-slate-600 transition-all group-hover:translate-x-1 ${theme === 'genie' ? 'group-hover:text-purple-400' : 'group-hover:text-cyan-400'}`} />
                   </div>
                 </div>
               );

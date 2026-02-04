@@ -1,8 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Book, Cpu, Layers, Zap } from 'lucide-react';
+import { AppTheme } from '../types';
 
-const ProcessingAnimation: React.FC = () => {
+interface ProcessingAnimationProps {
+  theme?: AppTheme;
+}
+
+const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({ theme }) => {
   const [stage, setStage] = useState(0);
   const stages = [
     "The Genie Is Reading Your Note 😇...",
@@ -18,23 +22,25 @@ const ProcessingAnimation: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const isGenie = theme === 'genie';
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-12 animate-in fade-in duration-1000">
       <div className="relative">
         {/* Outer Glow */}
-        <div className="absolute inset-0 bg-cyan-500/20 blur-[80px] rounded-full animate-pulse" />
+        <div className={`absolute inset-0 blur-[80px] rounded-full animate-pulse ${isGenie ? 'bg-purple-500/20' : 'bg-cyan-500/20'}`} />
         
         {/* Core Animation Container */}
-        <div className="relative w-48 h-48 bg-slate-900 border border-cyan-500/30 rounded-[3rem] flex items-center justify-center shadow-2xl overflow-hidden">
+        <div className={`relative w-48 h-48 bg-slate-900 border rounded-[3rem] flex items-center justify-center shadow-2xl overflow-hidden ${isGenie ? 'border-purple-500/30' : 'border-cyan-500/30'}`}>
           
           {/* Scanning Line */}
-          <div className="absolute inset-x-0 h-1 bg-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-[scan_2s_ease-in-out_infinite]" />
+          <div className={`absolute inset-x-0 h-1 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-[scan_2s_ease-in-out_infinite] ${isGenie ? 'bg-purple-400/50 shadow-[0_0_15px_rgba(192,132,252,0.8)]' : 'bg-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.8)]'}`} />
           
           <div className="grid grid-cols-2 gap-4 animate-[spin_10s_linear_infinite]">
-            <Book className="text-cyan-400 opacity-80" size={32} />
-            <Cpu className="text-emerald-400 opacity-80" size={32} />
-            <Layers className="text-blue-400 opacity-80" size={32} />
-            <Zap className="text-yellow-400 opacity-80" size={32} />
+            <Book className={`${isGenie ? 'text-purple-400' : 'text-cyan-400'} opacity-80`} size={32} />
+            <Cpu className={`${isGenie ? 'text-pink-400' : 'text-emerald-400'} opacity-80`} size={32} />
+            <Layers className={`${isGenie ? 'text-indigo-400' : 'text-blue-400'} opacity-80`} size={32} />
+            <Zap className={`${isGenie ? 'text-yellow-400' : 'text-yellow-400'} opacity-80`} size={32} />
           </div>
         </div>
       </div>
@@ -50,7 +56,9 @@ const ProcessingAnimation: React.FC = () => {
             <div 
               key={i} 
               className={`h-1.5 rounded-full transition-all duration-1000 ${
-                i === stage ? 'w-8 bg-cyan-500' : 'w-2 bg-slate-800'
+                i === stage 
+                  ? (isGenie ? 'w-8 bg-purple-500' : 'w-8 bg-cyan-500')
+                  : 'w-2 bg-slate-800'
               }`} 
             />
           ))}

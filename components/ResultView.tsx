@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StudyMaterial, Flashcard, QuizQuestion } from '../types';
+import { StudyMaterial, Flashcard, QuizQuestion, AppTheme } from '../types';
 import { ArrowLeft, Download, Copy, Check, Info, HelpCircle, GraduationCap, ChevronRight, ChevronLeft, Zap, Loader2, Sparkles, FileText, XCircle, CheckCircle2, Link } from 'lucide-react';
 import { GeminiService } from '../services/gemini';
 import { supabase } from '../lib/supabase';
@@ -8,10 +8,11 @@ import ProveItModal from './ProveItModal';
 
 interface ResultViewProps {
   material: StudyMaterial;
+  theme: AppTheme;
   onBack: () => void;
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
+const ResultView: React.FC<ResultViewProps> = ({ material, theme, onBack }) => {
   // Flashcards are now the default view
   const [activeTab, setActiveTab] = useState<'summary' | 'flashcards' | 'quiz'>('flashcards');
   const [copied, setCopied] = useState(false);
@@ -39,74 +40,21 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleFlashcardConfidence = (type: 'got-it' | 'review') => {
-    // Track reviewed cards for Prove It
-    const currentCard = localMaterial.flashcards[flashcardIndex];
-    if (currentCard && !reviewedCards.find(c => c.front === currentCard.question)) {
-      setReviewedCards(prev => [...prev, {
-        id: `card-${flashcardIndex}`,
-        front: currentCard.question,
-        back: currentCard.answer
-      }]);
-    }
-    
-    // Move to next card or trigger Prove It at the end
-    if (flashcardIndex < localMaterial.flashcards.length - 1) {
-      setIsFlipped(false);
-      setTimeout(() => setFlashcardIndex(i => i + 1), 150);
-    } else {
-      // End of deck - trigger Prove It modal
-      setProveItOpen(true);
-    }
-  };
-
-  const generateFlashcardsOnDemand = async () => {
-    setIsGeneratingFlashcards(true);
-    try {
-      const cards = await GeminiService.generateFlashcards(localMaterial.summary);
-      
-      const userEmail = localStorage.getItem('notegenie_user_email') || 'unknown';
-      const flashcardsToInsert = cards.map(f => ({
-        summary_id: localMaterial.id,
-        user_email: userEmail,
-        front: f.question,
-        back: f.answer
-      }));
-      await supabase.from('flashcards').insert(flashcardsToInsert);
-
-      setLocalMaterial(prev => ({ ...prev, flashcards: cards }));
-    } catch (err) {
-      console.error("Flashcard generation failed:", err);
-    } finally {
-      setIsGeneratingFlashcards(false);
-    }
-  };
-
-  const generateQuizOnDemand = async () => {
-    setIsGeneratingQuiz(true);
-    try {
-      const questions = await GeminiService.generateQuiz(localMaterial.summary);
-      
-      const userEmail = localStorage.getItem('notegenie_user_email') || 'unknown';
-      await supabase.from('quizzes').insert({
-        summary_id: localMaterial.id,
-        user_email: userEmail,
-        title: `Quiz: ${localMaterial.title}`,
-        question_count: questions.length,
-        questions: questions
-      });
-
-      setLocalMaterial(prev => ({ ...prev, quiz: questions }));
-    } catch (err) {
-      console.error("Quiz generation failed:", err);
-    } finally {
-      setIsGeneratingQuiz(false);
-    }
-  };
+// ... existing handlers ...
 
   const downloadAsPDF = () => {
+    // ... existing PDF logic ...
     setIsDownloading(true);
+    // ... (rest of PDF logic omitted for brevity, logic remains same)
+    // To safe keeping, we will just copy the existing PDF logic or trust it remains unchanged if we target specific blocks.
+    // However, replace_file_content replaces the whole block.
+    // I will use a larger block replacement strategy or assume I must rewrite the PDF logic if I touch the surrounding component.
+    // ACTUALLY, I can use multi_replace to just target component signature and specific render areas.
+    // But for now, let's just update the render part primarily, or rewrite the container.
+    // To avoid deleting the PDF logic, I will restart the tool call with a targeted approach or copy the PDF logic.
+    // Since I don't have the PDF logic code here in context fully (it was viewed 2 turns ago), I'll try to target component definition and RETURN statement.
+    // Wait, I HAVE the PDF logic in the `view_file` output from Step 238.
+    // I will include the existing PDF logic in the replacement content to be safe.
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -250,6 +198,71 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
     }
   };
 
+  const handleFlashcardConfidence = (type: 'got-it' | 'review') => {
+    // Track reviewed cards for Prove It
+    const currentCard = localMaterial.flashcards[flashcardIndex];
+    if (currentCard && !reviewedCards.find(c => c.front === currentCard.question)) {
+      setReviewedCards(prev => [...prev, {
+        id: `card-${flashcardIndex}`,
+        front: currentCard.question,
+        back: currentCard.answer
+      }]);
+    }
+    
+    // Move to next card or trigger Prove It at the end
+    if (flashcardIndex < localMaterial.flashcards.length - 1) {
+      setIsFlipped(false);
+      setTimeout(() => setFlashcardIndex(i => i + 1), 150);
+    } else {
+      // End of deck - trigger Prove It modal
+      setProveItOpen(true);
+    }
+  };
+
+  const generateFlashcardsOnDemand = async () => {
+    setIsGeneratingFlashcards(true);
+    try {
+      const cards = await GeminiService.generateFlashcards(localMaterial.summary);
+      
+      const userEmail = localStorage.getItem('notegenie_user_email') || 'unknown';
+      const flashcardsToInsert = cards.map(f => ({
+        summary_id: localMaterial.id,
+        user_email: userEmail,
+        front: f.question,
+        back: f.answer
+      }));
+      await supabase.from('flashcards').insert(flashcardsToInsert);
+
+      setLocalMaterial(prev => ({ ...prev, flashcards: cards }));
+    } catch (err) {
+      console.error("Flashcard generation failed:", err);
+    } finally {
+      setIsGeneratingFlashcards(false);
+    }
+  };
+
+  const generateQuizOnDemand = async () => {
+    setIsGeneratingQuiz(true);
+    try {
+      const questions = await GeminiService.generateQuiz(localMaterial.summary);
+      
+      const userEmail = localStorage.getItem('notegenie_user_email') || 'unknown';
+      await supabase.from('quizzes').insert({
+        summary_id: localMaterial.id,
+        user_email: userEmail,
+        title: `Quiz: ${localMaterial.title}`,
+        question_count: questions.length,
+        questions: questions
+      });
+
+      setLocalMaterial(prev => ({ ...prev, quiz: questions }));
+    } catch (err) {
+      console.error("Quiz generation failed:", err);
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -271,7 +284,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
           <button 
             onClick={downloadAsPDF}
             disabled={isDownloading}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl transition-all font-bold shadow-lg shadow-cyan-900/20 disabled:opacity-70 disabled:cursor-wait"
+            className={`flex-1 md:flex-none flex items-center justify-center gap-2 text-white px-5 py-2.5 rounded-xl transition-all font-bold shadow-lg disabled:opacity-70 disabled:cursor-wait ${theme === 'genie' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-900/20' : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/20'}`}
           >
             {isDownloading ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
             {isDownloading ? 'Export Pack' : 'Download Pack'}
@@ -290,7 +303,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex-1 py-3 px-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${
               activeTab === tab.id 
-              ? 'bg-slate-800 text-cyan-400 shadow-md ring-1 ring-slate-700' 
+              ? (theme === 'genie' ? 'bg-slate-800 text-pink-400 shadow-md ring-1 ring-slate-700' : 'bg-slate-800 text-cyan-400 shadow-md ring-1 ring-slate-700') 
               : 'text-slate-500 hover:text-slate-300'
             }`}
           >
@@ -305,7 +318,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
           <div className="animate-in zoom-in-95 duration-300">
             {localMaterial.flashcards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-6">
-                <div className="w-24 h-24 bg-cyan-500/10 rounded-[2.5rem] flex items-center justify-center text-cyan-400">
+                <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center ${theme === 'genie' ? 'bg-pink-500/10 text-pink-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
                   <Sparkles size={48} />
                 </div>
                 <div className="space-y-2 max-w-sm">
@@ -332,21 +345,21 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                     <div className="absolute inset-0 bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center backface-hidden shadow-2xl relative overflow-hidden">
                       {/* Source Link */}
                       <div className="absolute top-6 right-6">
-                        <div className="flex items-center gap-1.5 bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 px-3 py-1.5 rounded-full transition-all text-[10px] font-bold uppercase tracking-widest border border-slate-700/50">
+                        <div className={`flex items-center gap-1.5 bg-slate-800/50 hover:bg-slate-800 text-slate-400 px-3 py-1.5 rounded-full transition-all text-[10px] font-bold uppercase tracking-widest border border-slate-700/50 ${theme === 'genie' ? 'hover:text-pink-400' : 'hover:text-cyan-400'}`}>
                            <Link size={12} />
                            {localMaterial.flashcards[flashcardIndex].source || 'Context: Summary'}
                         </div>
                       </div>
 
-                      <div className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.3em] mb-6">Card {flashcardIndex + 1}</div>
+                      <div className={`text-[10px] font-black uppercase tracking-[0.3em] mb-6 ${theme === 'genie' ? 'text-pink-500' : 'text-cyan-500'}`}>Card {flashcardIndex + 1}</div>
                       <p className="text-2xl md:text-3xl font-bold text-white leading-tight">{localMaterial.flashcards[flashcardIndex].question}</p>
                       <div className="absolute bottom-8 text-slate-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                         Tap to reveal <ChevronRight size={14} />
                       </div>
                     </div>
                     {/* Back */}
-                    <div className="absolute inset-0 bg-emerald-950 border-2 border-emerald-500/30 rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-2xl shadow-emerald-900/20">
-                      <div className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-6">Answer</div>
+                    <div className={`absolute inset-0 border-2 rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-2xl ${theme === 'genie' ? 'bg-purple-900/50 border-purple-500/30' : 'bg-emerald-950 border-emerald-500/30'}`}>
+                      <div className={`text-[10px] font-black uppercase tracking-[0.3em] mb-6 ${theme === 'genie' ? 'text-purple-400' : 'text-emerald-400'}`}>Answer</div>
                       <p className="text-xl md:text-2xl font-medium text-slate-100 leading-relaxed">{localMaterial.flashcards[flashcardIndex].answer}</p>
                       
                       <div className="absolute bottom-8 flex gap-4 w-full justify-center px-8" onClick={(e) => e.stopPropagation()}>
@@ -358,7 +371,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                         </button>
                         <button 
                           onClick={() => handleFlashcardConfidence('got-it')}
-                          className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-emerald-500/20 transition-colors"
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors ${theme === 'genie' ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'}`}
                         >
                           <CheckCircle2 size={14} /> I Know It
                         </button>
@@ -392,11 +405,12 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
           </div>
         )}
 
+
         {activeTab === 'summary' && (
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 md:p-10 space-y-6 animate-in zoom-in-95 duration-300 shadow-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-cyan-400">
-                <div className="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center">
+              <div className={`flex items-center gap-3 ${theme === 'genie' ? 'text-pink-400' : 'text-cyan-400'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'genie' ? 'bg-pink-500/10' : 'bg-cyan-500/10'}`}>
                   <Info size={20} />
                 </div>
                 <h3 className="font-bold uppercase tracking-widest text-xs">Source Material</h3>
@@ -412,7 +426,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center gap-6">
-                <Loader2 className="w-16 h-16 text-cyan-500 animate-spin" />
+                <Loader2 className={`w-16 h-16 animate-spin ${theme === 'genie' ? 'text-pink-500' : 'text-cyan-500'}`} />
                 <div className="space-y-2">
                   <h4 className="text-xl font-bold text-white">Generating Summary...</h4>
                   <p className="text-slate-400 text-sm">Your summary is being crafted in the background. It will appear here shortly.</p>
@@ -426,7 +440,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
           <div className="animate-in zoom-in-95 duration-300">
              {localMaterial.quiz.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-6">
-                <div className="w-24 h-24 bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center text-emerald-400">
+                <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center ${theme === 'genie' ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                   <GraduationCap size={48} />
                 </div>
                 <div className="space-y-2 max-w-sm">
@@ -436,7 +450,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                 <button 
                   onClick={generateQuizOnDemand}
                   disabled={isGeneratingQuiz}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-50"
+                  className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-50 text-white ${theme === 'genie' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}
                 >
                   {isGeneratingQuiz ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
                   {isGeneratingQuiz ? 'Building Quiz...' : 'Generate Quiz'}
@@ -447,7 +461,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                 {localMaterial.quiz.map((q, idx) => (
                   <div key={idx} className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8 space-y-6 shadow-xl">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 font-black text-sm">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm ${theme === 'genie' ? 'bg-purple-500/10 text-purple-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
                         {idx + 1}
                       </div>
                       <p className="text-xl font-bold text-white leading-tight pt-1">{q.question}</p>
@@ -461,10 +475,10 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
 
                         let variant = 'border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300';
                         if (showResult) {
-                          if (isCorrect) variant = 'border-emerald-500 bg-emerald-500/10 text-emerald-400';
+                          if (isCorrect) variant = (theme === 'genie' ? 'border-purple-500 bg-purple-500/10 text-purple-400' : 'border-emerald-500 bg-emerald-500/10 text-emerald-400');
                           else if (isSelected) variant = 'border-red-500 bg-red-500/10 text-red-400';
                         } else if (isSelected) {
-                          variant = 'border-cyan-500 bg-cyan-500/10 text-cyan-400';
+                          variant = (theme === 'genie' ? 'border-pink-500 bg-pink-500/10 text-pink-400' : 'border-cyan-500 bg-cyan-500/10 text-cyan-400');
                         }
 
                         return (
@@ -484,7 +498,7 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                       <div className="pl-14 pt-2">
                         <button 
                           onClick={() => setShowExplanation(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                          className="text-cyan-400 hover:text-cyan-300 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-3"
+                          className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-3 ${theme === 'genie' ? 'text-pink-400 hover:text-pink-300' : 'text-cyan-400 hover:text-cyan-300'}`}
                         >
                           {showExplanation[idx] ? 'Hide Insight' : 'Reveal Reasoning'} <HelpCircle size={14} />
                         </button>
@@ -498,8 +512,8 @@ const ResultView: React.FC<ResultViewProps> = ({ material, onBack }) => {
                   </div>
                 ))}
                 
-                <div className="bg-gradient-to-br from-cyan-900/10 to-emerald-900/10 border border-slate-800 p-10 rounded-[2.5rem] text-center space-y-4">
-                  <GraduationCap className="mx-auto text-emerald-400" size={56} />
+                <div className={`border border-slate-800 p-10 rounded-[2.5rem] text-center space-y-4 ${theme === 'genie' ? 'bg-gradient-to-br from-purple-900/10 to-pink-900/10' : 'bg-gradient-to-br from-cyan-900/10 to-emerald-900/10'}`}>
+                  <GraduationCap className={`mx-auto ${theme === 'genie' ? 'text-purple-400' : 'text-emerald-400'}`} size={56} />
                   <h4 className="text-2xl font-bold text-white tracking-tight">Focus Mastery Achieved</h4>
                   <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
                     Consistent assessment sessions are proven to increase exam performance by 40%. Keep grinding!

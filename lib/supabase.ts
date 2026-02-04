@@ -10,4 +10,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Key are required. Please check lib/supabase.ts or your environment variables.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const customStorage = {
+  getItem: (key: string) => {
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+  },
+  setItem: (key: string, value: string) => {
+    // Check our custom "Remember Me" flag
+    const rememberMe = localStorage.getItem('notegenie_remember_me') === 'true';
+    if (rememberMe) {
+      localStorage.setItem(key, value);
+    } else {
+      sessionStorage.setItem(key, value);
+    }
+  },
+  removeItem: (key: string) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: customStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});

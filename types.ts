@@ -5,6 +5,14 @@ export enum SummaryMode {
   TLDR = 'tldr'
 }
 
+export enum QuizStyle {
+  STANDARD = 'standard',
+  SCENARIO = 'scenario',
+  BASIC = 'basic'
+}
+
+export type AppTheme = 'default' | 'genie';
+
 export enum AppStep {
   LOGIN = 'login',
   AUTH_CALLBACK = 'auth-callback',
@@ -12,7 +20,8 @@ export enum AppStep {
   UPLOAD = 'upload',
   PROCESSING = 'processing',
   RESULT = 'result',
-  SYSTEM_DESIGN = 'system-design'
+  SYSTEM_DESIGN = 'system-design',
+  SETTINGS = 'settings'
 }
 
 export interface Flashcard {
