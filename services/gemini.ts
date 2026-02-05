@@ -5,15 +5,19 @@ import { SummaryMode, Flashcard, QuizQuestion, ProveItQuestion, ProveItGrade } f
 import * as pdfjsLib from "pdfjs-dist";
 
 // Set worker source for PDF.js
+// Use a standard non-module worker to avoid "import statement outside module" errors
 try {
   if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+    // Fallback to a widely compatible CDN with no-module support if possible, or standard build
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
   }
 } catch (e) {
   console.warn("Failed to set PDF worker", e);
 }
 
 type NormalizedMode = "tldr" | "bullet" | "detailed";
+
+type QuizStyle = 'standard' | 'scenario' | 'basic';
 
 function normalizeMode(mode: SummaryMode): NormalizedMode {
   const raw = String(mode ?? "").toLowerCase();
@@ -138,10 +142,13 @@ export class GeminiService {
     const prompt = `
 Return valid JSON only. No extra text.
 Task: Generate exactly 10 high-impact flashcards based ONLY on the summary provided.
+CRITICAL: Do not use outside knowledge. If the info is not in the summary, do not test it.
+
 Rules:
 1) Each flashcard must support ACTIVE RECALL.
-2) Populate 'source' field with the specific Section Title/Header.
+2) Populate 'source' field with the specific Section Title/Header from the summary.
 3) Keep answers 1-3 sentences.
+4) Questions should avoid "What is..." details if possible, focus on Check for Understanding / Why / How.
 
 Schema: Array of { "question": string, "answer": string, "source": string }
 
@@ -191,13 +198,17 @@ ${summaryText}
     const model = textContext ? "gemini-3-flash-preview" : "gemini-3-pro-preview";
     
     const prompt = `
-      Analyze this document content and generate exactly ${config.targetCards} flashcards.
+      Analyze this document context and generate exactly ${config.targetCards} flashcards.
       Difficulty Level: ${config.difficulty}.
+      
+      STRICT ANTI-HALLUCINATION RULES:
+      1. Use ONLY the provided document text. Do not use external knowledge.
+      2. If the document does not mention a fact, do NOT create a card for it.
       
       Rules:
       1. Extract key concepts directly from the content.
       2. 'source' field MUST be "Page X" or Section Header.
-      3. Questions must be challenging.
+      3. Questions must be challenging but answerable from the text.
       
       Output JSON format: Array of { "question": string, "answer": string, "source": string }.
     `;
@@ -240,14 +251,30 @@ ${summaryText}
     }
   }
 
-  static async generateQuiz(summaryText: string): Promise<QuizQuestion[]> {
+  static async generateQuiz(flashcards: Flashcard[], style: QuizStyle = 'standard'): Promise<QuizQuestion[]> {
     const model = "gemini-3-flash-preview";
+    
+    // Filter cards to ensure we have content (just in case)
+    const validCards = flashcards.filter(f => f.question && f.answer);
+    if (validCards.length < 3) return []; // Not enough content for a good quiz
+
+    let styleInstructions = "Create 5 standard multiple-choice questions.";
+    if (style === 'scenario') {
+      styleInstructions = "Create 5 SCENARIO-BASED questions. Present a short situation or problem where the concept applies, asking the user to identify the correct concept or solution. Focus on application.";
+    } else if (style === 'basic') {
+      styleInstructions = "Create 5 simple, direct definition-based questions. Focus on vocabulary and core facts.";
+    }
+
     const prompt = `
 Return valid JSON only.
-Task: Create 5 multiple-choice questions based on the summary.
+Task: ${styleInstructions}
+CRITICAL: Use ONLY the provided FLASHCARDS as the source of truth. Do not use outside facts.
+Each question must test a concept found in the flashcards.
+
 Schema: Array of { question, options (4 strings), correctAnswer (string), explanation }
-SUMMARY:
-${summaryText}
+
+FLASHCARDS CONTEXT:
+${JSON.stringify(validCards.map(c => ({ Q: c.question, A: c.answer })))}
 `.trim();
 
     try {
@@ -292,10 +319,11 @@ ${summaryText}
       } catch (error: any) {
         lastError = error;
         
-        // Check if error is retryable (503, 429, or network errors)
-        const isRetryable = 
-          error?.message?.includes('503') ||
-          error?.message?.includes('429') ||
+        // Critical: Check for 429 specifically
+        const isRateLimit = error?.message?.includes('429') || error?.status === 429;
+        const isServerOverload = error?.message?.includes('503') || error?.status === 503;
+        
+        const isRetryable = isRateLimit || isServerOverload ||
           error?.message?.includes('RESOURCE_EXHAUSTED') ||
           error?.message?.includes('UNAVAILABLE') ||
           error?.message?.includes('overloaded');
@@ -304,9 +332,11 @@ ${summaryText}
           throw error;
         }
         
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(`[Retry ${attempt + 1}/${maxRetries}] Waiting ${delay}ms before retry...`);
+        // Aggressive backoff for 429s: 2s, 5s, 10s
+        const backoffBase = isRateLimit ? 3500 : 1500; 
+        const delay = backoffBase * Math.pow(2, attempt); // 3.5s, 7s, 14s
+        
+        console.warn(`[Gemini Retry ${attempt + 1}/${maxRetries}] ${isRateLimit ? 'Hit Rate Limit' : 'Server Busy'}. Waiting ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }

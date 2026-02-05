@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StudyMaterial, Flashcard, QuizQuestion, AppTheme } from '../types';
+import { StudyMaterial, Flashcard, QuizQuestion, AppTheme, QuizStyle } from '../types';
 import { ArrowLeft, Download, Copy, Check, Info, HelpCircle, GraduationCap, ChevronRight, ChevronLeft, Zap, Loader2, Sparkles, FileText, XCircle, CheckCircle2, Link } from 'lucide-react';
 import { GeminiService } from '../services/gemini';
 import { supabase } from '../lib/supabase';
@@ -9,10 +9,11 @@ import ProveItModal from './ProveItModal';
 interface ResultViewProps {
   material: StudyMaterial;
   theme: AppTheme;
+  quizStyle: QuizStyle; // <!-- Add prop type
   onBack: () => void;
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ material, theme, onBack }) => {
+const ResultView: React.FC<ResultViewProps> = ({ material, theme, quizStyle, onBack }) => { // <!-- Destructure prop
   // Flashcards are now the default view
   const [activeTab, setActiveTab] = useState<'summary' | 'flashcards' | 'quiz'>('flashcards');
   const [copied, setCopied] = useState(false);
@@ -243,8 +244,17 @@ const ResultView: React.FC<ResultViewProps> = ({ material, theme, onBack }) => {
 
   const generateQuizOnDemand = async () => {
     setIsGeneratingQuiz(true);
+    setIsGeneratingQuiz(true);
     try {
-      const questions = await GeminiService.generateQuiz(localMaterial.summary);
+      if (localMaterial.flashcards.length === 0) {
+         // Fallback if no flashcards exist yet (should ideally generate fc first, but let's handle graceful fail or fallback to summary if we kept that overload? No, we changed signature.)
+         // Actually, if there are no flashcards, we can't generate a quiz based on them.
+         // We should probably auto-generate flashcards first implicitly? 
+         // For now, let's assume the UI guides them, or we prompt them.
+         // But "Best way to do it" implies robustness.
+         throw new Error("No flashcards available to generate quiz from. Please generate flashcards first.");
+      }
+      const questions = await GeminiService.generateQuiz(localMaterial.flashcards, quizStyle); // <!-- Pass style here
       
       const userEmail = localStorage.getItem('notegenie_user_email') || 'unknown';
       await supabase.from('quizzes').insert({

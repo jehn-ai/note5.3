@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppStep, StudyMaterial, SummaryMode } from './types';
+import { AppStep, StudyMaterial, SummaryMode, QuizStyle } from './types';
 import Dashboard from './components/Dashboard';
 import Auth from './components/Auth';
 import FileUpload from './components/FileUpload';
@@ -18,12 +18,14 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<StudyMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [quizStyle, setQuizStyle] = useState<QuizStyle>(QuizStyle.STANDARD);
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         setUserEmail(session.user.email);
+        setQuizStyle(session.user.user_metadata?.quiz_style || QuizStyle.STANDARD);
         fetchHistory(session.user.email); 
         setCurrentStep((prev) => prev === AppStep.LOGIN ? AppStep.DASHBOARD : prev);
       } else {
@@ -232,7 +234,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {!userEmail && currentStep === AppStep.LOGIN && <Auth onLogin={handleLogin} />}
+        {!userEmail && currentStep === AppStep.LOGIN && <Auth onLogin={handleLogin} theme={theme} />}
         
         {userEmail && currentStep === AppStep.DASHBOARD && (
           <Dashboard 
@@ -257,6 +259,8 @@ const App: React.FC = () => {
           <ResultView 
             material={processedData} 
             theme={theme}
+            quizStyle={quizStyle}
+            onUpdate={handleMaterialUpdate}
             onBack={() => setCurrentStep(AppStep.DASHBOARD)} 
           />
         )}

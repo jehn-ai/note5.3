@@ -63,9 +63,20 @@ const Dashboard: React.FC<DashboardProps> = ({ history: cloudHistory, theme, onU
   // Merge and deduplicate (prefer Cloud if ID matches, though IDs usually differ)
   // Logic: Local IDs are strings (sessionId), Cloud are UUIDs.
   // We just list both. Local ones might be temporary.
-  const mergedHistory = [...localMaterials, ...cloudHistory].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const mergedHistory = React.useMemo(() => {
+    // Combine and deduplicate by ID
+    const combined = [...localMaterials, ...cloudHistory];
+    const uniqueMap = new Map();
+    combined.forEach(item => {
+      if (!uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    });
+
+    return Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [localMaterials, cloudHistory]);
 
   // Simple dedupe by title + date to avoid obvious dupes if we ever sync properly? 
   // For now, keep simple.
